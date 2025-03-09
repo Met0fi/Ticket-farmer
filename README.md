@@ -3,3 +3,7 @@ A very good script for automatic farm tickets in the Roblox game "Evade". The sc
 The script does not have a key and it will always be absolutely free. 
 
 The script only needs to be run in a round! It will not be able to start in the Evade main menu. 
+
+Get Script:
+
+https://raw.githubusercontent.com/Met0fi/Ticket-farmer/refs/heads/main/GetScript
