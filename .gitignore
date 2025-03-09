@@ -1,41 +1,400 @@
-# Compiled Lua sources
-luac.out
+getgenv().farmEnabled = false
+getgenv().collectedTickets = 0
+local SAFE_HEIGHT = 4500
+local TELEPORT_INTERVAL = 0.5
+local COLLECT_DELAY = 1.5
+local farmingActive = false
+local platformEnabled = true
 
-# luarocks build files
-*.src.rock
-*.zip
-*.tar.gz
+local Players = game:GetService("Players")
+local VirtualUser = game:GetService("VirtualUser")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
-# Object files
-*.o
-*.os
-*.ko
-*.obj
-*.elf
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+local ticketsFolder = game:GetService("Workspace"):WaitForChild("Game"):WaitForChild("Effects"):WaitForChild("Tickets")
 
-# Precompiled Headers
-*.gch
-*.pch
+local currentLanguage = "English"
+local translations = {
+    English = {
+        Title = "Ticket Farm",
+        ToggleOn = "Stop Farming",
+        ToggleOff = "Start Farming",
+        Tickets = "Tickets: ",
+        Language = "Language: ",
+        Platform = "Platform: ",
+        PlatformOn = "On",
+        PlatformOff = "Off",
+        NotificationTitle = "Ticket Farm",
+        NotificationText = "The farm ticket script has been uploaded. Enjoy <3"
+    },
+    Russian = {
+        Title = "Фарм Тикетов",
+        ToggleOn = "Остановить",
+        ToggleOff = "Начать Фарм",
+        Tickets = "Тикеты: ",
+        Language = "Язык: ",
+        Platform = "Платформа: ",
+        PlatformOn = "Вкл",
+        PlatformOff = "Выкл",
+        NotificationTitle = "Фарм Тикетов",
+        NotificationText = "Скрипт фарма тикетов загружен. Наслаждайтесь <3"
+    },
+    Spanish = {
+        Title = "Granja de Tickets",
+        ToggleOn = "Parar Farming",
+        ToggleOff = "Iniciar Farming",
+        Tickets = "Tickets: ",
+        Language = "Idioma: ",
+        Platform = "Plataforma: ",
+        PlatformOn = "Encendido",
+        PlatformOff = "Apagado",
+        NotificationTitle = "Granja de Tickets",
+        NotificationText = "El script de la granja de tickets ha sido cargado. ¡Disfruta <3!"
+    },
+    Chinese = {
+        Title = "票务农场",
+        ToggleOn = "停止采集",
+        ToggleOff = "开始采集",
+        Tickets = "票数: ",
+        Language = "语言: ",
+        Platform = "平台: ",
+        PlatformOn = "开启",
+        PlatformOff = "关闭",
+        NotificationTitle = "票务农场",
+        NotificationText = "票务农场脚本已上传。享受 <3"
+    }
+}
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-*.def
-*.exp
+local success, protectgui = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/mirodev01/protectgui/master/source.lua"))()
+end)
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+if success then
+    protectgui.init()
+end
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+local function setupAntiKick()
+    local function onPlayerKick()
+        local success, err = pcall(function()
+            player:LoadCharacter()
+        end)
+        if not success then
+            task.wait(1)
+            player:LoadCharacter()
+        end
+    end
 
+    local function monitorConnections()
+        local connections = getconnections(player.OnTeleport)
+        for _, connection in pairs(connections) do
+            connection:Connect(onPlayerKick)
+        end
+    end
+
+    monitorConnections()
+    player.OnTeleport:Connect(onPlayerKick)
+end
+
+setupAntiKick()
+
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+if game.CoreGui:FindFirstChild("TicketFarmGUI") then
+    game.CoreGui.TicketFarmGUI:Destroy()
+end
+
+if game.Workspace:FindFirstChild("SafePlatform") then
+    game.Workspace.SafePlatform:Destroy()
+end
+
+local function createSafePlatform()
+    local platform = Instance.new("Part")
+    platform.Size = Vector3.new(10, 2, 10)
+    platform.Position = Vector3.new(0, SAFE_HEIGHT, 0)
+    platform.Anchored = true
+    platform.Material = Enum.Material.Neon
+    platform.Transparency = 0.3
+    platform.Name = "SafePlatform"
+    platform.Parent = game.Workspace
+    
+    spawn(function()
+        while true do
+            for hue = 0, 1, 0.01 do
+                platform.Color = Color3.fromHSV(hue, 1, 1)
+                task.wait(0.15)
+            end
+        end
+    end)
+    
+    return platform
+end
+
+local safePlatform = createSafePlatform()
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TicketFarmGUI"
+ScreenGui.Parent = game.CoreGui
+ScreenGui.ResetOnSpawn = false
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 250, 0, 220)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -110)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+local Shadow = Instance.new("ImageLabel")
+Shadow.Size = UDim2.new(1, 20, 1, 20)
+Shadow.Position = UDim2.new(0, -10, 0, -10)
+Shadow.BackgroundTransparency = 1
+Shadow.Image = "rbxassetid://1316045217"
+Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+Shadow.ImageTransparency = 0.6
+Shadow.Parent = MainFrame
+
+local dragging, dragInput, dragStart, startPos
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
+
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0.8, 0, 1, 0)
+Title.Position = UDim2.new(0.1, 0, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = translations[currentLanguage].Title
+Title.TextColor3 = Color3.fromRGB(0, 255, 255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 22
+Title.Parent = TitleBar
+
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 25, 0, 25)
+MinimizeButton.Position = UDim2.new(1, -30, 0, 2.5)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+MinimizeButton.Text = "-"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.Font = Enum.Font.SourceSansBold
+MinimizeButton.TextSize = 20
+MinimizeButton.Parent = TitleBar
+local MinimizeCorner = UICorner:Clone()
+MinimizeCorner.Parent = MinimizeButton
+
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0.8, 0, 0, 40)
+ToggleButton.Position = UDim2.new(0.1, 0, 0.2, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+ToggleButton.Text = translations[currentLanguage].ToggleOff
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.TextSize = 20
+ToggleButton.Parent = MainFrame
+local ToggleCorner = UICorner:Clone()
+ToggleCorner.Parent = ToggleButton
+
+local PlatformButton = Instance.new("TextButton")
+PlatformButton.Size = UDim2.new(0.8, 0, 0, 30)
+PlatformButton.Position = UDim2.new(0.1, 0, 0.45, 0)
+PlatformButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+PlatformButton.Text = translations[currentLanguage].Platform .. translations[currentLanguage].PlatformOn
+PlatformButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlatformButton.Font = Enum.Font.SourceSansBold
+PlatformButton.TextSize = 18
+PlatformButton.Parent = MainFrame
+local PlatformCorner = UICorner:Clone()
+PlatformCorner.Parent = PlatformButton
+
+local TicketCounter = Instance.new("TextLabel")
+TicketCounter.Size = UDim2.new(0.8, 0, 0, 30)
+TicketCounter.Position = UDim2.new(0.1, 0, 0.65, 0)
+TicketCounter.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+TicketCounter.Text = translations[currentLanguage].Tickets .. "0"
+TicketCounter.TextColor3 = Color3.fromRGB(0, 255, 0)
+TicketCounter.Font = Enum.Font.SourceSansBold
+TicketCounter.TextSize = 18
+TicketCounter.Parent = MainFrame
+local CounterCorner = UICorner:Clone()
+CounterCorner.Parent = TicketCounter
+
+local LanguageButton = Instance.new("TextButton")
+LanguageButton.Size = UDim2.new(0.8, 0, 0, 30)
+LanguageButton.Position = UDim2.new(0.1, 0, 0.85, 0)
+LanguageButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+LanguageButton.Text = translations[currentLanguage].Language .. currentLanguage
+LanguageButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+LanguageButton.Font = Enum.Font.SourceSansBold
+LanguageButton.TextSize = 18
+LanguageButton.Parent = MainFrame
+local LanguageCorner = UICorner:Clone()
+LanguageCorner.Parent = LanguageButton
+
+local minimized = false
+MinimizeButton.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        MainFrame:TweenSize(UDim2.new(0, 250, 0, 30), "Out", "Quad", 0.3)
+        MinimizeButton.Text = "+"
+        ToggleButton.Visible = false
+        PlatformButton.Visible = false
+        TicketCounter.Visible = false
+        LanguageButton.Visible = false
+    else
+        MainFrame:TweenSize(UDim2.new(0, 250, 0, 220), "Out", "Quad", 0.3)
+        MinimizeButton.Text = "-"
+        ToggleButton.Visible = true
+        PlatformButton.Visible = true
+        TicketCounter.Visible = true
+        LanguageButton.Visible = true
+    end
+end)
+
+local languages = {"English", "Russian", "Spanish", "Chinese"}
+local languageIndex = 1
+
+local function updateLanguage()
+    Title.Text = translations[currentLanguage].Title
+    ToggleButton.Text = getgenv().farmEnabled and translations[currentLanguage].ToggleOn or translations[currentLanguage].ToggleOff
+    TicketCounter.Text = translations[currentLanguage].Tickets .. getgenv().collectedTickets
+    LanguageButton.Text = translations[currentLanguage].Language .. currentLanguage
+    PlatformButton.Text = translations[currentLanguage].Platform .. (platformEnabled and translations[currentLanguage].PlatformOn or translations[currentLanguage].PlatformOff)
+end
+
+LanguageButton.MouseButton1Click:Connect(function()
+    languageIndex = (languageIndex % #languages) + 1
+    currentLanguage = languages[languageIndex]
+    updateLanguage()
+end)
+
+PlatformButton.MouseButton1Click:Connect(function()
+    platformEnabled = not platformEnabled
+    updateLanguage()
+end)
+
+local function teleportTo(targetCFrame)
+    if humanoidRootPart and character:FindFirstChild("Humanoid") then
+        local humanoid = character.Humanoid
+        if humanoid.Health > 0 then
+            humanoidRootPart.CFrame = targetCFrame
+        end
+    end
+end
+
+local function getTicketValue(ticket)
+    local value = 1
+    if ticket:FindFirstChild("Value") then
+        value = ticket.Value.Value
+    elseif ticket.Name:match("Ticket%d") then
+        value = tonumber(ticket.Name:match("%d")) or 1
+    end
+    return value
+end
+
+local function collectTickets()
+    if farmingActive then return end
+    farmingActive = true
+    
+    while getgenv().farmEnabled do
+        character = player.Character or player.CharacterAdded:Wait()
+        humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+        local humanoid = character:WaitForChild("Humanoid")
+        
+        if character:GetAttribute("Downed") then
+            ReplicatedStorage.Events.Player.ChangePlayerMode:FireServer(true)
+            task.wait(0.5)
+        end
+
+        if humanoid.Health <= 0 then
+            task.wait(1)
+            continue
+        end
+
+        local tickets = ticketsFolder:GetChildren()
+        if #tickets > 0 then
+            for _, ticket in ipairs(tickets) do
+                if not getgenv().farmEnabled then break end
+                local ticketPart = ticket:FindFirstChild("HumanoidRootPart") or ticket:FindFirstChild("Part")
+                if ticketPart then
+                    teleportTo(ticketPart.CFrame * CFrame.new(0, 2, 0))
+                    task.wait(COLLECT_DELAY)
+                    local ticketValue = getTicketValue(ticket)
+                    getgenv().collectedTickets = getgenv().collectedTickets + ticketValue
+                    TicketCounter.Text = translations[currentLanguage].Tickets .. getgenv().collectedTickets
+                end
+            end
+        end
+        
+        if getgenv().farmEnabled and platformEnabled then
+            teleportTo(safePlatform.CFrame * CFrame.new(0, 4, 0))
+        end
+        task.wait(TELEPORT_INTERVAL)
+    end
+    
+    farmingActive = false
+end
+
+ToggleButton.MouseButton1Click:Connect(function()
+    getgenv().farmEnabled = not getgenv().farmEnabled
+    ToggleButton.Text = getgenv().farmEnabled and translations[currentLanguage].ToggleOn or translations[currentLanguage].ToggleOff
+    ToggleButton.BackgroundColor3 = getgenv().farmEnabled and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(45, 45, 45)
+    
+    if getgenv().farmEnabled and not farmingActive then
+        spawn(collectTickets)
+    end
+end)
+
+player.CharacterAdded:Connect(function(newChar)
+    character = newChar
+    humanoidRootPart = newChar:WaitForChild("HumanoidRootPart")
+    if getgenv().farmEnabled and platformEnabled then
+        teleportTo(safePlatform.CFrame * CFrame.new(0, 4, 0))
+    end
+end)
+
+game.StarterGui:SetCore("SendNotification", {
+    Title = translations[currentLanguage].NotificationTitle,
+    Text = translations[currentLanguage].NotificationText,
+    Duration = 5,
+    Button1 = "OK"
+})
+
+updateLanguage()
