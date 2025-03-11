@@ -2,7 +2,7 @@ A very good script for automatic farm tickets in the Roblox game "Evade". The sc
 
 Functionality:
 
-— Ticket farming using the platform as in Unknown X hub (This farm method can be turned off and on) 
+— Ticket farming using the platform as in Unknown hub X (This farm method can be turned off and on) 
 
 — A counter for the number and face value of tickets collected using this script. (If the farm is turned off, the meter will not work) 
 
