@@ -321,10 +321,10 @@ end
 
 local function getTicketValue(ticket)
     local value = 1
-    if ticket:FindFirstChild("Value") then
+    if ticket:FindFirstChild("Value") and ticket.Value:IsA("IntValue") then
         value = ticket.Value.Value
-    elseif ticket.Name:match("Ticket%d") then
-        value = tonumber(ticket.Name:match("%d")) or 1
+    elseif ticket.Name:match("Ticket(%d+)") then
+        value = tonumber(ticket.Name:match("Ticket(%d+)")) or 1
     end
     return value
 end
