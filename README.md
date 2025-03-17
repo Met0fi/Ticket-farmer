@@ -15,5 +15,3 @@ The script only needs to be run in a round! It will not be able to start in the 
 Get Script:
 
 https://raw.githubusercontent.com/Met0fi/Ticket-farmer/refs/heads/main/GetScript
-
-(BRUH, PLEASE DON'T TELL ME THAT I POSTED THE SCRIPT TOO LATE. I KNOW THAT, AND I DEEPLY APOLOGIZE.)
