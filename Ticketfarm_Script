@@ -334,6 +334,11 @@ local function collectTickets()
     farmingActive = true
     
     while getgenv().farmEnabled do
+        if not getgenv().farmEnabled then
+            farmingActive = false
+            break
+        end
+
         character = player.Character or player.CharacterAdded:Wait()
         humanoidRootPart = character:WaitForChild("HumanoidRootPart")
         local humanoid = character:WaitForChild("Humanoid")
@@ -351,7 +356,10 @@ local function collectTickets()
         local tickets = ticketsFolder:GetChildren()
         if #tickets > 0 then
             for _, ticket in ipairs(tickets) do
-                if not getgenv().farmEnabled then break end
+                if not getgenv().farmEnabled then
+                    farmingActive = false
+                    break
+                end
                 local ticketPart = ticket:FindFirstChild("HumanoidRootPart") or ticket:FindFirstChild("Part")
                 if ticketPart then
                     teleportTo(ticketPart.CFrame * CFrame.new(0, 2, 0))
@@ -379,6 +387,9 @@ ToggleButton.MouseButton1Click:Connect(function()
     
     if getgenv().farmEnabled and not farmingActive then
         spawn(collectTickets)
+    else
+        getgenv().farmEnabled = false
+        farmingActive = false
     end
 end)
 
