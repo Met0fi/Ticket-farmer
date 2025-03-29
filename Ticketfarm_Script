@@ -363,10 +363,12 @@ local function collectTickets()
                 local ticketPart = ticket:FindFirstChild("HumanoidRootPart") or ticket:FindFirstChild("Part")
                 if ticketPart then
                     teleportTo(ticketPart.CFrame * CFrame.new(0, 2, 0))
-                    task.wait(COLLECT_DELAY)
                     local ticketValue = getTicketValue(ticket)
-                    getgenv().collectedTickets = getgenv().collectedTickets + ticketValue
-                    TicketCounter.Text = translations[currentLanguage].Tickets .. getgenv().collectedTickets
+                    task.wait(COLLECT_DELAY)
+                    if not ticket.Parent then
+                        getgenv().collectedTickets = getgenv().collectedTickets + ticketValue
+                        TicketCounter.Text = translations[currentLanguage].Tickets .. getgenv().collectedTickets
+                    end
                 end
             end
         end
