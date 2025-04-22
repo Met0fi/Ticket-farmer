@@ -24,7 +24,7 @@ V - turning on and off the platform (farm without and with a platform)
 
 X - script language change
 
-On your phone, just use your fingers to move the Gui menu and use the script :3
+On phone, just use your fingers to move the Gui menu and use the script :3
 
 GET SCRIPT:
 
