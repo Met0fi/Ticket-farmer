@@ -5,6 +5,7 @@ local TELEPORT_INTERVAL = 0.5
 local COLLECT_DELAY = 1.5
 local farmingActive = false
 local platformEnabled = true
+local guiVisible = true
 
 local Players = game:GetService("Players")
 local VirtualUser = game:GetService("VirtualUser")
@@ -54,7 +55,7 @@ local translations = {
         PlatformOn = "Encendido",
         PlatformOff = "Apagado",
         NotificationTitle = "Granja de Tickets",
-        NotificationText = "El script de la granja de tickets ha sido cargado. ¡Disfruta <3!"
+        NotificationText = "¡El script de la granja de tickets ha sido cargado. Disfruta <3!"
     },
     Chinese = {
         Title = "票务农场",
@@ -70,34 +71,18 @@ local translations = {
     }
 }
 
-local success, protectgui = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/mirodev01/protectgui/master/source.lua"))()
-end)
-
-if success then
-    protectgui.init()
-end
-
 local function setupAntiKick()
     local function onPlayerKick()
-        local success, err = pcall(function()
+        pcall(function()
             player:LoadCharacter()
         end)
-        if not success then
-            task.wait(1)
-            player:LoadCharacter()
-        end
     end
 
-    local function monitorConnections()
-        local connections = getconnections(player.OnTeleport)
-        for _, connection in pairs(connections) do
-            connection:Connect(onPlayerKick)
-        end
-    end
-
-    monitorConnections()
-    player.OnTeleport:Connect(onPlayerKick)
+    local connection
+    connection = player.OnTeleport:Connect(function()
+        onPlayerKick()
+        connection:Disconnect()
+    end)
 end
 
 setupAntiKick()
@@ -300,12 +285,14 @@ local function updateLanguage()
 end
 
 LanguageButton.MouseButton1Click:Connect(function()
+    if not MainFrame.Visible then return end
     languageIndex = (languageIndex % #languages) + 1
     currentLanguage = languages[languageIndex]
     updateLanguage()
 end)
 
 PlatformButton.MouseButton1Click:Connect(function()
+    if not MainFrame.Visible then return end
     platformEnabled = not platformEnabled
     updateLanguage()
 end)
@@ -382,7 +369,9 @@ local function collectTickets()
     farmingActive = false
 end
 
-ToggleButton.MouseButton1Click:Connect(function()
+local function toggleFarm()
+    if not MainFrame.Visible then return end
+    
     getgenv().farmEnabled = not getgenv().farmEnabled
     ToggleButton.Text = getgenv().farmEnabled and translations[currentLanguage].ToggleOn or translations[currentLanguage].ToggleOff
     ToggleButton.BackgroundColor3 = getgenv().farmEnabled and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(45, 45, 45)
@@ -392,6 +381,30 @@ ToggleButton.MouseButton1Click:Connect(function()
     else
         getgenv().farmEnabled = false
         farmingActive = false
+    end
+end
+
+ToggleButton.MouseButton1Click:Connect(toggleFarm)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    
+    if input.KeyCode == Enum.KeyCode.N then
+        MainFrame.Visible = not MainFrame.Visible
+        guiVisible = MainFrame.Visible
+    else
+        if not MainFrame.Visible then return end
+        
+        if input.KeyCode == Enum.KeyCode.B then
+            toggleFarm()
+        elseif input.KeyCode == Enum.KeyCode.V then
+            platformEnabled = not platformEnabled
+            updateLanguage()
+        elseif input.KeyCode == Enum.KeyCode.X then
+            languageIndex = (languageIndex % #languages) + 1
+            currentLanguage = languages[languageIndex]
+            updateLanguage()
+        end
     end
 end)
 
